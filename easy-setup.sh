@@ -24,8 +24,13 @@ detect_os() {
 
 # Function to check if Docker is installed
 check_docker() {
-    if command -v docker &> /dev/null && command -v docker-compose &> /dev/null; then
-        return 0
+    if command -v docker &> /dev/null; then
+        # Check for docker-compose (old) or docker compose (new)
+        if command -v docker-compose &> /dev/null || docker compose version &> /dev/null; then
+            return 0
+        else
+            return 1
+        fi
     else
         return 1
     fi
@@ -88,11 +93,49 @@ update_claude_config() {
     # Create or update config file
     if [[ -f "$config_file" ]]; then
         echo "Backing up existing config..."
-        cp "$config_file" "$config_file.backup"
-    fi
+        cp "$config_file" "$config_file.backup.$(date +%Y%m%d_%H%M%S)"
+        
+        # Check if chrome-devtools server already exists
+        if grep -q '"chrome-devtools"' "$config_file"; then
+            echo "Chrome DevTools MCP server already configured!"
+            return 0
+        fi
+        
+        # Add chrome-devtools to existing config
+        echo "Adding Chrome DevTools to existing MCP servers..."
+        
+        # Use Python to merge JSON (more reliable than manual editing)
+        python3 -c "
+import json
+import sys
+
+try:
+    with open('$config_file', 'r') as f:
+        config = json.load(f)
+except:
+    config = {'mcpServers': {}}
+
+if 'mcpServers' not in config:
+    config['mcpServers'] = {}
+
+config['mcpServers']['chrome-devtools'] = {
+    'command': 'docker',
+    'args': [
+        'exec',
+        'chrome-devtools-mcp-server',
+        'node',
+        '/app/build/index.js'
+    ]
+}
+
+with open('$config_file', 'w') as f:
+    json.dump(config, f, indent=2)
     
-    # Create new config with chrome-devtools server
-    cat > "$config_file" << 'EOF'
+print('✅ Chrome DevTools added to existing configuration!')
+"
+    else
+        # Create new config with chrome-devtools server
+        cat > "$config_file" << 'EOF'
 {
   "mcpServers": {
     "chrome-devtools": {
@@ -107,8 +150,8 @@ update_claude_config() {
   }
 }
 EOF
-    
-    echo "✅ Claude Desktop configured!"
+        echo "✅ Claude Desktop configured with Chrome DevTools!"
+    fi
 }
 
 # Main setup process

@@ -4,31 +4,44 @@
 
 set -e
 
+# Function to get the correct docker compose command
+get_docker_compose_cmd() {
+    if command -v docker-compose &> /dev/null; then
+        echo "docker-compose"
+    elif docker compose version &> /dev/null 2>&1; then
+        echo "docker compose"
+    else
+        echo "docker-compose"  # fallback
+    fi
+}
+
+DOCKER_COMPOSE=$(get_docker_compose_cmd)
+
 case "$1" in
     start)
         echo "🚀 Starting Chrome DevTools MCP Server..."
-        docker-compose up -d
+        $DOCKER_COMPOSE up -d
         echo "✅ Server started! Chrome DevTools available at http://localhost:9222"
-        echo "📋 Use 'docker-compose logs -f' to view logs"
+        echo "📋 Use '$DOCKER_COMPOSE logs -f' to view logs"
         ;;
     stop)
         echo "🛑 Stopping Chrome DevTools MCP Server..."
-        docker-compose down
+        $DOCKER_COMPOSE down
         echo "✅ Server stopped!"
         ;;
     restart)
         echo "🔄 Restarting Chrome DevTools MCP Server..."
-        docker-compose down
-        docker-compose up -d
+        $DOCKER_COMPOSE down
+        $DOCKER_COMPOSE up -d
         echo "✅ Server restarted!"
         ;;
     logs)
         echo "📋 Showing logs (Ctrl+C to exit)..."
-        docker-compose logs -f
+        $DOCKER_COMPOSE logs -f
         ;;
     status)
         echo "📊 Server status:"
-        docker-compose ps
+        $DOCKER_COMPOSE ps
         echo ""
         echo "🔍 Health check:"
         if curl -s http://localhost:9222/json > /dev/null; then
@@ -39,12 +52,12 @@ case "$1" in
         ;;
     build)
         echo "🔨 Building Docker image..."
-        docker-compose build
+        $DOCKER_COMPOSE build
         echo "✅ Build complete!"
         ;;
     clean)
         echo "🧹 Cleaning up Docker resources..."
-        docker-compose down -v
+        $DOCKER_COMPOSE down -v
         docker system prune -f
         echo "✅ Cleanup complete!"
         ;;
