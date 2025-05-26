@@ -1,0 +1,29 @@
+version: "3.8"
+
+services:
+  chrome-devtools-mcp:
+    build: .
+    container_name: chrome-devtools-mcp-server
+    ports:
+      - "9222:9222" # Chrome DevTools Protocol
+      - "5900:5900" # VNC (optional, for debugging)
+    volumes:
+      - chrome-data:/tmp/chrome-debug
+      - ./logs:/var/log/supervisor
+    environment:
+      - DISPLAY=:99
+      - NODE_ENV=production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9222/json"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    security_opt:
+      - seccomp:unconfined
+    shm_size: 2gb
+
+volumes:
+  chrome-data:
+    driver: local
