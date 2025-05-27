@@ -1,5 +1,9 @@
-# Use Ubuntu as base image for better Chrome support
-FROM ubuntu:22.04
+# Use Node.js base image with Chrome support
+FROM node:20-bullseye
+
+# Set platform-specific variables
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
 
 # Avoid prompts from apt
 ENV DEBIAN_FRONTEND=noninteractive
@@ -45,16 +49,21 @@ RUN apt-get update && apt-get install -y \
     fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js 20
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs
-
-# Install Google Chrome directly
-RUN wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
-    && apt-get update \
-    && apt-get install -y ./google-chrome-stable_current_amd64.deb \
-    && rm google-chrome-stable_current_amd64.deb \
-    && rm -rf /var/lib/apt/lists/*
+# Install Google Chrome based on architecture
+RUN if [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
+        # For ARM64, use Chromium
+        apt-get update && \
+        apt-get install -y chromium && \
+        ln -sf /usr/bin/chromium /usr/bin/google-chrome && \
+        rm -rf /var/lib/apt/lists/*; \
+    else \
+        # For AMD64, use Google Chrome
+        wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - && \
+        echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
+        apt-get update && \
+        apt-get install -y google-chrome-stable && \
+        rm -rf /var/lib/apt/lists/*; \
+    fi
 
 # Create app directory
 WORKDIR /app
@@ -62,14 +71,17 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install all dependencies (including dev dependencies for build)
+RUN npm ci
 
 # Copy source code
 COPY . .
 
 # Build the TypeScript code
 RUN npm run build
+
+# Remove dev dependencies to reduce image size
+RUN npm prune --production
 
 # Create directories for Chrome
 RUN mkdir -p /tmp/chrome-debug
@@ -92,8 +104,16 @@ EXPOSE 9222 5900
 
 # Set environment variables
 ENV DISPLAY=:99
-ENV CHROME_BIN=/usr/bin/google-chrome
 ENV NODE_ENV=production
+
+# Set Chrome binary path based on what was installed
+RUN if [ -f /usr/bin/google-chrome ]; then \
+        echo "ENV CHROME_BIN=/usr/bin/google-chrome" >> /etc/environment; \
+    elif [ -f /usr/bin/chromium-browser ]; then \
+        echo "ENV CHROME_BIN=/usr/bin/chromium-browser" >> /etc/environment; \
+    fi
+
+ENV CHROME_BIN=/usr/bin/google-chrome
 
 # Start supervisor
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"] 

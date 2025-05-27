@@ -1,8 +1,7 @@
-version: "3.8"
-
 services:
   chrome-devtools-mcp:
-    build: .
+    build:
+      context: .
     container_name: chrome-devtools-mcp-server
     ports:
       - "9222:9222" # Chrome DevTools Protocol
