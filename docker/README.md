@@ -1,31 +1,24 @@
-# Chrome DevTools MCP Server - Docker Setup
+# Docker Configuration
 
-This directory contains Docker configuration files to run the Chrome DevTools MCP Server in a containerized environment with Chrome browser included.
+This directory contains Docker configuration files for the Chrome DevTools MCP Server with Chrome browser included.
+
+> **Note**: Basic Docker usage is covered in the main README.md. This document covers advanced Docker configuration and troubleshooting.
 
 ## Quick Start
 
-1. **Build and start the container:**
+See the main README.md for basic setup. For advanced usage:
 
-   ```bash
-   docker-compose up -d
-   ```
+```bash
+# Build and start
+docker-compose up -d
 
-2. **Check if it's running:**
+# Monitor
+docker-compose ps
+docker-compose logs -f
 
-   ```bash
-   docker-compose ps
-   ```
-
-3. **View logs:**
-
-   ```bash
-   docker-compose logs -f
-   ```
-
-4. **Stop the container:**
-   ```bash
-   docker-compose down
-   ```
+# Stop
+docker-compose down
+```
 
 ## What's Included
 
@@ -49,23 +42,7 @@ This directory contains Docker configuration files to run the Chrome DevTools MC
 
 ## Usage with Claude Desktop
 
-Update your Claude Desktop configuration to point to the containerized server:
-
-```json
-{
-  "mcpServers": {
-    "chrome-devtools": {
-      "command": "docker",
-      "args": [
-        "exec",
-        "chrome-devtools-mcp-server",
-        "node",
-        "/app/build/index.js"
-      ]
-    }
-  }
-}
-```
+See the main README.md for Claude Desktop configuration. This Docker setup uses the same configuration as documented there.
 
 ## Debugging
 
